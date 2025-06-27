@@ -1,0 +1,229 @@
+import { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "/components/ui/card";
+import { Button } from "/components/ui/button";
+import { Input } from "/components/ui/input";
+import { Label } from "/components/ui/label";
+import { Utensils, GlassWater, Loader2, AlertTriangle, Sparkles } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from "/components/ui/tabs";
+
+// Simulated AI API
+const fetchNutritionData = async (query: string, category: 'food' | 'liquid') => {
+await new Promise(resolve => setTimeout(resolve, 1500));
+
+const foodDatabase = {
+// Solid Foods
+'apple': { calories: 52, category: 'food', type: 'fruit' },
+'chicken': { calories: 165, category: 'food', type: 'protein' },
+'burger': { calories: 295, category: 'food', type: 'fast food' },
+// Liquids
+'milk': { calories: 42, category: 'liquid', type: 'dairy' },
+'cola': { calories: 150, category: 'liquid', type: 'soda' },
+};
+
+const normalizedQuery = query.toLowerCase().trim();
+
+if (nonFoodItems.includes(normalizedQuery)) {
+throw new Error('This is not a food or drink item');
+}
+
+if (foodDatabase[normalizedQuery] && foodDatabase[normalizedQuery].category !== category) {
+throw new Error('Wrong Food Type');
+}
+
+return foodDatabase[normalizedQuery] || {
+calories: category === 'food' ? 200 : 100,
+category,
+type: normalizedQuery
+};
+};
+
+const nonFoodItems = ['rock', 'metal', 'paper'];
+
+export default function AICalorieTracker() {
+const [query, setQuery] = useState('');
+const [quantity, setQuantity] = useState('');
+const [result, setResult] = useState<any>(null);
+const [error, setError] = useState('');
+const [isLoading, setIsLoading] = useState(false);
+const [activeTab, setActiveTab] = useState<'food' | 'liquid'>('food');
+
+const handleCalculate = async () => {
+if (!query.trim()) {
+setError('Please enter a food/drink name');
+return;
+}
+
+const quantityNum = parseFloat(quantity);
+if (isNaN(quantityNum) || quantityNum <= 0) {
+setError(`Enter valid quantity in ${activeTab === 'food' ? 'grams' : 'ml'}`);
+return;
+}
+
+setIsLoading(true);
+setError('');
+
+try {
+const data = await fetchNutritionData(query, activeTab);
+setResult({
+...data,
+calculatedCalories: Math.round((data.calories * quantityNum) / 100),
+quantity: quantityNum,
+query: query.charAt(0).toUpperCase() + query.slice(1)
+});
+} catch (err) {
+setError(err.message);
+} finally {
+setIsLoading(false);
+}
+};
+
+const resetForm = () => {
+setQuery('');
+setQuantity('');
+setResult(null);
+setError('');
+};
+
+useEffect(() => {
+if (error) {
+const timer = setTimeout(() => setError(''), 2000);
+return () => clearTimeout(timer);
+}
+}, [error]);
+
+return (
+<div className="min-h-screen bg-blue-50 flex items-center justify-center p-4">
+<Card className="w-full max-w-md shadow-xl">
+{/* Blue gradient accent bar */}
+<div className="h-2 w-full bg-gradient-to-r from-blue-400 to-cyan-500"></div>
+
+<CardHeader>
+<CardTitle className="text-2xl font-bold flex items-center gap-2 text-blue-600">
+<Sparkles className="text-blue-500" />
+AI Nutrition Scanner
+</CardTitle>
+<CardDescription>
+{activeTab === 'food' ? 'Calculate calories from foods' : 'Calculate calories from beverages'}
+</CardDescription>
+</CardHeader>
+
+<CardContent>
+<Tabs
+value={activeTab}
+onValueChange={(tab) => {
+setActiveTab(tab as 'food' | 'liquid');
+resetForm();
+}}
+className="mb-6"
+>
+<TabsList className="grid w-full grid-cols-2 bg-gray-100">
+<TabsTrigger
+value="food"
+className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600"
+>
+<Utensils className="mr-2 h-4 w-4" />
+Solid Foods
+</TabsTrigger>
+<TabsTrigger
+value="liquid"
+className="data-[state=active]:bg-white data-[state=active]:shadow-sm data-[state=active]:text-blue-600"
+>
+<GlassWater className="mr-2 h-4 w-4" />
+Liquids
+</TabsTrigger>
+</TabsList>
+</Tabs>
+
+<div className="space-y-4">
+{error && (
+<motion.div
+initial={{ opacity: 0, scale: 0.9 }}
+animate={{ opacity: 1, scale: 1 }}
+exit={{ opacity: 0 }}
+className="bg-red-100 border border-red-300 text-red-800 px-4 py-3 rounded-lg text-center"
+>
+{error}
+</motion.div>
+)}
+
+<div>
+<Label>{activeTab === 'food' ? 'Food Name' : 'Beverage Name'}</Label>
+<Input
+placeholder={activeTab === 'food' ? 'e.g. Chicken, Pizza' : 'e.g. Milk, Cola'}
+value={query}
+onChange={(e) => setQuery(e.target.value)}
+/>
+</div>
+
+<div>
+<Label>Quantity ({activeTab === 'food' ? 'grams' : 'ml'})</Label>
+<Input
+type="number"
+placeholder={activeTab === 'food' ? 'e.g. 200g' : 'e.g. 500ml'}
+value={quantity}
+onChange={(e) => setQuantity(e.target.value)}
+/>
+</div>
+
+<div className="flex gap-2 pt-2">
+<Button
+onClick={handleCalculate}
+disabled={isLoading}
+className="flex-1 bg-gradient-to-r from-blue-500 to-cyan-600 hover:from-blue-600 hover:to-cyan-700"
+>
+{isLoading ? (
+<>
+<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+AI Scanning...
+</>
+) : (
+<>
+<Sparkles className="mr-2 h-4 w-4" />
+Calculate
+</>
+)}
+</Button>
+<Button
+variant="outline"
+onClick={resetForm}
+className="flex-1"
+>
+Reset
+</Button>
+</div>
+</div>
+
+<AnimatePresence>
+{result && (
+<motion.div
+initial={{ opacity: 0, height: 0 }}
+animate={{ opacity: 1, height: 'auto' }}
+exit={{ opacity: 0, height: 0 }}
+className="mt-6 p-4 rounded-lg bg-blue-50 border-blue-100 border"
+>
+<div className="flex justify-between items-start">
+<div>
+<h3 className="font-semibold">{result.query}</h3>
+<p className="text-3xl font-bold mt-2">
+{result.calculatedCalories} kcal
+</p>
+<p className="text-sm text-gray-600 mt-1">
+{result.calories} kcal per {activeTab === 'food' ? '100g' : '100ml'}
+</p>
+</div>
+<span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+{result.type}
+</span>
+</div>
+<p className="text-sm mt-3 pt-2 border-t border-gray-200 border-opacity-50">
+Serving: {result.quantity}{activeTab === 'food' ? 'g' : 'ml'}
+</p>
+</motion.div>
+)}
+</AnimatePresence>
+</CardContent>
+</Card>
+</div>
+);
+}
